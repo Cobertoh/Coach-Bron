@@ -7,6 +7,14 @@ Needs https (or localhost) for accounts (WebCrypto), camera and the service work
 - Local: `python3 -m http.server 8765` then open http://localhost:8765
 - iPhone: host the folder on any https static host (Netlify Drop, GitHub Pages, Cloudflare Pages), open in Safari, Share > Add to Home Screen.
 
+## Visuals
+Every lesson step, common mistake (wrong vs right), drill step, glossary term and player skill has an animated illustration:
+- `js/figure.js`: animated player figure (IK poses, ball flight, rim, on-body labels such as joint angles).
+- `js/scene.js`: top-down court animations for reads, spacing, systems and terms.
+- `js/picto.js`: pictograms and infographics (timeline, shot clock, scoreboard, pace bar).
+- Content mapping lives in `js/visuals/map.js`; clips in `js/visuals/clips.js`; court scenes in `js/visuals/scenes.js`.
+Each lesson also has a "Watch it" player that plays all steps in order. These are illustrations, not real footage.
+
 ## Honest limitations
 - Camera + MediaPipe pose analysis is NOT tested on a real device. Pose rules were tested on synthetic landmarks only. First analysis needs internet to fetch the MediaPipe runtime/model (then cached).
 - Ball tracking is not implemented; it is reported as "not evaluated".

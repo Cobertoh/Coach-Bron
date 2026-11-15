@@ -5,6 +5,28 @@ import { analyze } from '../pose.js';
 import { loadPose, extractFrames, pickMime } from '../poseRuntime.js';
 import { back, empty, ctx } from '../ui.js';
 import { onLeave } from '../ctx.js';
+import { visual } from '../visual.js';
+
+const DEMO = { shooting: 'c:shot', dribbling: 'c:crossLow', finishing: 'c:layup', footwork: 'c:pivot', defense: 'c:slide', passing: 'c:pass' };
+// Top-down setup diagram: phone, field of view, player and the direction they face or move.
+const FACE = { shooting: 'side', finishing: 'side', passing: 'side', dribbling: 'front', footwork: 'front', defense: 'slide' };
+function camDiagram(tech, distText) {
+  const svg = s('svg', { viewBox: '0 0 160 92', class: 'pictosvg', role: 'img', 'aria-label': 'Top-down camera setup diagram' });
+  const T = (x, y, t, o = {}) => s('text', { x, y, 'text-anchor': o.a || 'middle', 'font-size': o.size || 6, 'font-weight': o.w || 700, fill: o.fill || '#F4F5F7', style: 'font-family:system-ui,sans-serif' }, t);
+  svg.append(s('rect', { width: 160, height: 92, rx: 6, fill: '#10141C' }),
+    s('path', { d: 'M28 46 L120 18 L120 74 Z', fill: 'rgba(166,243,106,.10)', stroke: '#A6F36A', 'stroke-width': 0.6, 'stroke-dasharray': '2 2' }),
+    s('rect', { x: 16, y: 38, width: 10, height: 16, rx: 2, fill: '#1C2330', stroke: '#F4F5F7', 'stroke-width': 1.2 }), s('circle', { cx: 24, cy: 46, r: 1.6, fill: '#A6F36A' }),
+    T(21, 64, 'Phone', { size: 5.5 }), T(21, 71, 'chest height', { size: 4.6, fill: '#A5AAB5', w: 500 }),
+    s('circle', { cx: 112, cy: 46, r: 7, fill: '#A6F36A' }), T(112, 48.5, 'YOU', { size: 4.4, fill: '#0b0f08', w: 900 }),
+    s('line', { x1: 30, y1: 84, x2: 104, y2: 84, stroke: '#A5AAB5', 'stroke-width': 0.8 }), s('path', { d: 'M30 81v6M104 81v6', stroke: '#A5AAB5', 'stroke-width': 0.8 }),
+    T(67, 81, (distText.match(/\d+[–-]\d+ feet|\d+ feet/) || ['see distance'])[0], { size: 6, fill: '#A5AAB5' }));
+  const f = FACE[tech] || 'side';
+  const ar = (x1, y1, x2, y2) => s('g', {}, s('line', { x1, y1, x2, y2, stroke: '#F2994A', 'stroke-width': 1.6, 'stroke-linecap': 'round' }), s('circle', { cx: x2, cy: y2, r: 1.8, fill: '#F2994A' }));
+  if (f === 'side') svg.append(ar(112, 46, 112, 30), T(124, 26, 'face this way', { size: 4.8, a: 'start', fill: '#F2994A' }), T(144, 52, 'basket', { size: 4.6, fill: '#A5AAB5' }), s('circle', { cx: 112, cy: 10, r: 3, fill: 'none', stroke: '#F2994A', 'stroke-width': 1 }));
+  else if (f === 'front') svg.append(ar(112, 46, 98, 46), T(98, 38, 'face camera', { size: 4.8, fill: '#F2994A' }));
+  else svg.append(ar(112, 38, 112, 22), ar(112, 54, 112, 70), T(126, 47, 'slide across', { size: 4.8, a: 'start', fill: '#F2994A' }));
+  return svg;
+}
 
 const SETUP = {
   shooting: { angle: 'From the side (or a slight front angle), so your shooting arm and knees are clearly visible.', dist: 'About 8–12 feet away, with the phone at chest height.', tip: 'Take at least 5 shots from the same spot. Face the side of the frame, not the camera.' },
@@ -40,7 +62,8 @@ export async function session(tech, query) {
     stopStream();
     draw(h('div', {}, back(from && L[from] ? L[from].title : 'Analyze', from && L[from] ? `#/lesson/${from}` : '#/analyze'),
       h('h1', {}, `Analyze: ${T.title}`), h('div', { class: 'muted small', style: { margin: '4px 0 12px' } }, 'Step 1 of 3: set up your phone'),
-      h('div', { class: 'card' }, h('h4', {}, 'Camera angle'), h('p', { style: { margin: '4px 0 10px' } }, sup.angle), h('h4', {}, 'Distance'), h('p', { style: { margin: '4px 0 10px' } }, sup.dist), h('h4', {}, 'What to record'), h('p', { style: { margin: '4px 0 0' } }, sup.tip)),
+      h('div', { class: 'vis picto' }, camDiagram(tech, sup.dist)),
+      h('div', { class: 'card' }, h('h4', {}, 'Camera angle'), h('p', { style: { margin: '4px 0 10px' } }, sup.angle), h('h4', {}, 'Distance'), h('p', { style: { margin: '4px 0 10px' } }, sup.dist), h('h4', {}, 'What to record'), h('p', { style: { margin: '4px 0 10px' } }, sup.tip), DEMO[tech] ? visual(DEMO[tech], { label: 'Example of the movement to record' }) : null),
       h('div', { class: 'card' }, ...COMMON.flatMap(([a, b]) => [h('h4', {}, a), h('p', { class: 'small', style: { margin: '2px 0 10px' } }, b)])),
       h('button', { class: 'btn pri block', onclick: openCam }, icon('camera'), 'Open camera'),
       h('label', { class: 'btn block', style: { marginTop: '8px' } }, 'Choose or record a video file', h('input', { type: 'file', accept: 'video/*', style: { display: 'none' }, onchange: e => e.target.files[0] && process(e.target.files[0]) })),

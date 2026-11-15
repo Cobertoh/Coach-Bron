@@ -4,6 +4,8 @@ import { CATEGORIES, lessons, lessonsByCat, L, D, G, PY, glossary, drills, catTi
 import { back, secHead, lessonRow, empty, ctx } from '../ui.js';
 import { createCourtPlayer } from '../court.js';
 import { onLeave } from '../ctx.js';
+import { visual, mistakeVisual, watchPlayer } from '../visual.js';
+import { V, DV, GV, kwVisual } from '../visuals/map.js';
 
 export async function home() {
   const [prog, savedIds] = await Promise.all([PR.get(), saved.lessons()]);
@@ -70,12 +72,16 @@ export async function lesson(id) {
     el.append(h('h2', {}, 'See it'), cp.el, h('a', { class: 'small', href: `#/play/${l.court}` }, 'Open the full play with options and adjustments →'));
   }
   const sec = (t, body) => [h('h2', {}, t), body];
-  el.append(...sec('What it is', h('p', {}, l.what)), ...sec('Why it matters', h('p', {}, l.why)), ...sec('How it works', h('p', {}, l.how)),
-    ...sec('Step by step', h('ol', { class: 'steps' }, ...l.steps.map(x => h('li', {}, x)))));
-  if (l.mistakes?.length) el.append(...sec('Common mistakes', h('ul', {}, ...l.mistakes.map(x => h('li', {}, x)))));
-  if (l.practice?.length) el.append(...sec('How to practice it', h('ul', {}, ...l.practice.map(x => h('li', {}, x)))));
+  const vm = V[id] || {};
+  const stepRefs = l.steps.map((x, i) => vm.s?.[i] || kwVisual(x));
+  el.append(watchPlayer(stepRefs, l.steps, { title: `Watch it: ${l.title}` }));
+  el.append(...sec('What it is', h('div', { class: 'whatbox' }, h('p', {}, l.what), visual(vm.hero || stepRefs[0], { label: l.title }))),
+    ...sec('Why it matters', h('p', {}, l.why)), ...sec('How it works', h('p', {}, l.how)),
+    ...sec('Step by step', h('div', { class: 'stepcards' }, ...l.steps.map((x, i) => h('div', { class: 'stepcard' }, h('div', { class: 'sthead' }, h('span', { class: 'stnum' }, i + 1), h('span', {}, x)), visual(stepRefs[i], { label: x }))))));
+  if (l.mistakes?.length) el.append(...sec('Common mistakes', h('div', {}, ...l.mistakes.map((x, i) => mistakeVisual(x, vm.m?.[i] || [kwVisual(x), stepRefs[0]])))));
+  if (l.practice?.length) el.append(...sec('How to practice it', h('div', {}, ...l.practice.map(x => thumbRow(x)))));
   if (rel.drills.length) el.append(h('h2', {}, 'Relevant drills'), ...rel.drills.map(d => h('a', { class: 'card link', href: `#/drill/${d.id}` }, h('h3', {}, d.name), h('div', { class: 'small muted' }, d.purpose))));
-  if (l.examples?.length) el.append(...sec('Practical game examples', h('ul', {}, ...l.examples.map(x => h('li', {}, x)))));
+  if (l.examples?.length) el.append(...sec('Practical game examples', h('div', {}, ...l.examples.map(x => thumbRow(x)))));
   const relBits = [];
   if (rel.lessons.length) relBits.push(h('h4', { style: { margin: '10px 0 8px' } }, 'Lessons'), ...rel.lessons.map(x => lessonRow(x, prog)));
   if (rel.plays.length) relBits.push(h('h4', { style: { margin: '10px 0 8px' } }, 'Playbook'), ...rel.plays.map(p => h('a', { class: 'card link', href: `#/play/${p.id}` }, h('h3', {}, p.name), h('div', { class: 'small muted' }, p.summary))));
@@ -88,14 +94,24 @@ export async function lesson(id) {
 
 export function drill(id) {
   const d = D[id]; if (!d) return notFound();
+  const dv = DV[id] || {};
+  const refs = d.how.map((x, i) => dv.s?.[i] || kwVisual(x));
   const el = h('div', { class: 'page lesson' }, back('Training', '#/learn/training'), h('h1', {}, d.name), h('div', { class: 'small muted', style: { margin: '4px 0 10px' } }, d.type[0].toUpperCase() + d.type.slice(1) + ' drill'),
     h('div', { class: 'callout' }, h('b', {}, 'Purpose: '), d.purpose),
-    h('h2', {}, 'Setup'), h('p', {}, d.setup), h('h2', {}, 'How to do it'), h('ol', { class: 'steps' }, ...d.how.map(x => h('li', {}, x))),
-    h('h2', {}, 'How much'), h('p', {}, d.dose), h('h2', {}, 'Make it harder'), h('p', {}, d.progress),
+    watchPlayer(refs, d.how, { title: `Watch it: ${d.name}` }),
+    h('h2', {}, 'Setup'), h('div', { class: 'whatbox' }, h('p', {}, d.setup), visual(dv.setup || refs[0], { label: 'Drill setup' })),
+    h('h2', {}, 'How to do it'), h('div', { class: 'stepcards' }, ...d.how.map((x, i) => h('div', { class: 'stepcard' }, h('div', { class: 'sthead' }, h('span', { class: 'stnum' }, i + 1), h('span', {}, x)), visual(refs[i], { label: x })))),
+    h('h2', {}, 'How much'), doseRow(d.dose), h('h2', {}, 'Make it harder'), thumbRow(d.progress),
     h('h2', {}, 'Builds these lessons'), ...d.skills.map(s => L[s] && h('a', { class: 'card link', href: `#/lesson/${s}` }, h('h3', {}, L[s].title))));
   if (d.track) el.append(h('h2', {}, 'Measure it'), h('p', { class: 'small muted' }, 'Shooting results are repeatable and comparable, so this drill can be tracked.'), h('a', { class: 'btn pri block', href: `#/tracking/new/${d.track}` }, 'Start a tracked shooting workout'));
   else el.append(h('p', { class: 'small muted', style: { marginTop: '14px' } }, 'This drill has no tracked score on purpose: counting reps of it would not show real improvement.'));
   return el;
+}
+
+function thumbRow(text, ref) { return h('div', { class: 'thumbrow' }, visual(ref || kwVisual(text), { label: text, cls: 'thumb' }), h('div', { class: 'small' }, text)); }
+function doseRow(dose) {
+  const m = String(dose).match(/(\d+)\D+(\d+)?/); const sets = /set|round|trip|game/i.test(dose) && m ? +m[1] : 0;
+  return h('div', { class: 'dose' }, sets && sets <= 12 ? h('div', { class: 'dosedots' }, ...Array.from({ length: sets }, (_, i) => h('i', { style: { animationDelay: i * 0.15 + 's' } }))) : null, h('div', { class: 'dosetxt' }, dose));
 }
 
 export function glossaryPage() {
@@ -108,7 +124,7 @@ export function glossaryPage() {
 export function term(id) {
   const g = G[id]; if (!g) return notFound();
   return h('div', { class: 'page lesson' }, back('Terminology', '#/glossary'), h('h1', {}, g.term), h('div', { class: 'small muted', style: { margin: '4px 0 12px' } }, g.cat[0].toUpperCase() + g.cat.slice(1)),
-    h('div', { class: 'callout' }, g.def), g.alias.length ? h('p', { class: 'small muted' }, 'Also called: ' + g.alias.join(', ')) : null,
+    h('div', { class: 'callout' }, g.def), visual(GV[id] || kwVisual(g.term + ' ' + g.def), { label: g.term }), g.alias.length ? h('p', { class: 'small muted' }, 'Also called: ' + g.alias.join(', ')) : null,
     g.related.length ? [h('h2', {}, 'Learn more'), ...g.related.map(r => L[r] && h('a', { class: 'card link', href: `#/lesson/${r}` }, h('h3', {}, L[r].title)))] : null);
 }
 

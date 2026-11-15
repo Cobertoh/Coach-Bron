@@ -37,7 +37,7 @@ function head(to, ang, cls) {
   return s('path', { d: `M${to[0]} ${to[1]} L${p1[0]} ${p1[1]} L${p2[0]} ${p2[1]} Z`, class: cls, fill: 'currentColor', stroke: 'none' });
 }
 
-function arrowEl(a) {
+export function arrowEl(a) {
   const g = s('g', { class: 'arr', style: 'opacity:0' });
   const d = dist(a.from, a.to); if (d < 0.6 && a.kind !== 'shot') return g;
   const ang = Math.atan2(a.to[1] - a.from[1], a.to[0] - a.from[0]);
@@ -67,7 +67,7 @@ function arrowEl(a) {
   return g;
 }
 
-function courtBase() {
+export function courtBase() {
   const g = s('g', {});
   const L = (d, extra = {}) => g.append(s('path', { d, class: 'court-line', ...extra }));
   g.append(s('rect', { x: 0, y: 0, width: 50, height: 47, class: 'court-floor' }));
@@ -83,7 +83,7 @@ function courtBase() {
   return g;
 }
 
-function token(id, def) {
+export function token(id, def) {
   const n = id.slice(1);
   const g = s('g', { class: 'ptok', style: 'transform:translate(0,0)' });
   g.append(

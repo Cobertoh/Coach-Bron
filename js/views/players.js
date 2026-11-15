@@ -1,6 +1,8 @@
 import { h } from '../util.js';
 import { players, PL, L, D } from '../content/index.js';
 import { back, empty } from '../ui.js';
+import { visual, watchPlayer } from '../visual.js';
+import { V, DV } from '../visuals/map.js';
 
 const initials = n => n.split(' ').map(x => x[0]).slice(0, 2).join('');
 
@@ -23,8 +25,9 @@ export function profile(id) {
     ...sec('Distinctive techniques', bullets(p.techniques)),
     ...sec('Basketball strengths', bullets(p.strengths)),
     ...sec('What you can learn from them', bullets(p.learn)),
-    ...sec('Relevant lessons', h('div', {}, ...p.lessons.map(l => L[l] && h('a', { class: 'card link', href: `#/lesson/${l}` }, h('h3', {}, L[l].title))))),
-    ...sec('Recommended drills', h('div', {}, ...p.drills.map(d => D[d] && h('a', { class: 'card link', href: `#/drill/${d}` }, h('h3', {}, D[d].name), h('div', { class: 'small muted' }, D[d].purpose))))),
+    ...sec('See the skills', watchPlayer(p.lessons.filter(l => L[l] && V[l]).map(l => V[l].hero), p.lessons.filter(l => L[l] && V[l]).map(l => L[l].title), { title: 'Skills to study (illustrations, not footage)' })),
+    ...sec('Relevant lessons', h('div', {}, ...p.lessons.map(l => L[l] && h('a', { class: 'thumbrow link', href: `#/lesson/${l}` }, V[l] ? visual(V[l].hero, { label: L[l].title, cls: 'thumb' }) : null, h('h3', {}, L[l].title))))),
+    ...sec('Recommended drills', h('div', {}, ...p.drills.map(d => D[d] && h('a', { class: 'thumbrow link', href: `#/drill/${d}` }, DV[d] ? visual(DV[d].setup, { label: D[d].name, cls: 'thumb' }) : null, h('div', {}, h('h3', {}, D[d].name), h('div', { class: 'small muted' }, D[d].purpose)))))),
     ...sec('Film breakdown', h('div', {}, h('p', { class: 'small muted' }, 'What to watch for when you study game film:'), bullets(p.watch),
       h('div', { class: 'callout warn', style: { marginTop: '10px' } }, 'No video is bundled. Coach Bron does not scrape or copy footage. Search the league\'s official channels or use licensed sources to find clips, then look for the points above.'))));
 }
