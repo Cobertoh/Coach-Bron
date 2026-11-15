@@ -2,8 +2,6 @@ import { h, icon } from './util.js';
 import { mascotSVG } from './brand.js';
 import { ctx } from './ctx.js';
 import { catTitle } from './content/index.js';
-import { visual } from './visual.js';
-import { V } from './visuals/map.js';
 
 export const mascot = (o = {}) => h('span', { class: 'mascot-wrap', html: mascotSVG(o), style: { display: 'inline-block', lineHeight: 0 } });
 
@@ -18,8 +16,7 @@ export function empty(title, msg, { mood = 'think', action } = {}) {
 
 export function lessonRow(l, prog) {
   const p = prog?.[l.id];
-  const ref = V[l.id]?.hero;
-  return h('a', { class: 'card link lrow', href: `#/lesson/${l.id}` }, ref ? visual(ref, { label: l.title, cls: 'thumb' }) : null,
+  return h('a', { class: 'card link', href: `#/lesson/${l.id}` },
     h('div', {}, h('div', { class: 'row sb' }, h('h3', {}, l.title), p?.done ? h('span', { class: 'tag lime' }, 'Done') : p?.viewed ? h('span', { class: 'tag' }, 'In progress') : null),
       h('div', { class: 'small muted' }, catTitle(l.cat) + (l.sub ? ' · ' + l.sub : ''))));
 }

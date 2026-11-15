@@ -28,7 +28,7 @@ export const iq = [
     what: 'Noticing how defenders are positioned and reacting to it.',
     why: 'Every defense gives something up. Reading shows you what it is.',
     how: 'Look at feet, hands and where defenders look. Match the best option to what they give you.',
-    steps: ['Is your defender close or far? Close means drive, far means shoot.', 'Is help positioned? If yes, pass out.', 'Is the defense switching, hedging or dropping? Choose your counter.'],
+    steps: ['On the catch, read the closeout: if your defender is still far, shoot; if they fly at you, drive past them.', 'Is help positioned? If yes, pass out.', 'Is the defense switching, hedging or dropping? Choose your counter.'],
     mistakes: ['Deciding before you see the defense.', 'Forcing the play you planned.'],
     practice: ['Pause live play and ask what the defense is giving.'],
     drills: ['3v3-live', 'two-man-game'],

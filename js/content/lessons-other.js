@@ -8,7 +8,7 @@ export const defense = [
     what: 'Guarding the player with the ball, using a low stance and quick feet to stay between them and the basket.',
     why: 'Good on-ball defense keeps the offense from getting easy drives and shots.',
     how: 'Bend your knees, keep your back straight, stay about an arm\'s length away, and move your feet.',
-    steps: ['Feet wider than shoulders, knees bent, weight on the balls of your feet.', 'Hands active: one high, one low.', 'Slide with the dribbler, never cross your feet.', 'Contest the shot without leaving your feet early.'],
+    steps: ['Feet wider than shoulders, knees bent, weight on the balls of your feet.', 'Hands active: one hand near the ball to bother the dribble, the other ready for passing lanes. Don\'t reach.', 'Slide with the dribbler, never cross your feet.', 'Contest the shot without leaving your feet early.'],
     mistakes: ['Standing upright.', 'Reaching with your hands instead of moving your feet.', 'Crossing your feet.'],
     practice: ['Slide drills.', 'Film your stance from the front and the side.'],
     drills: ['defensive-slides', 'closeout-drill'],

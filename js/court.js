@@ -156,7 +156,7 @@ export function createCourtPlayer(play, { compact = false } = {}) {
     lines.length > 1 ? h('div', {}, h('h4', {}, 'Choose the defensive read'), chips, readNote) : null,
     note,
     h('div', { class: 'ctrls' }, mk(ICON_RESET, 'Back to beginning', () => { stop(); idx = 0; render(); }), mk(ICON_PREV, 'Previous step', () => step(-1)), playBtn, mk(ICON_NEXT, 'Next step', () => step(1)), dots, mk(ICON_REPLAY, 'Replay', replay)),
-    compact ? null : fullBtn, compact ? null : full);
+    ...(compact ? [] : [fullBtn, full]));
   load(0, 0);
   // Initial frame has no transition so players start in place.
   Object.values(toks).forEach(t => t.classList.add('fast')); ball.style.transitionDuration = '0s';

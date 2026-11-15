@@ -1,10 +1,8 @@
 // Visual factory + one shared animation loop. Only visuals on screen animate (battery friendly);
 // tap any visual to pause/resume. Reduced-motion users get a still frame until they tap.
 import { h, s } from './util.js';
-import { createFigureView } from './figure.js';
 import { createSceneView, sceneDur } from './scene.js';
 import { createPicto, createSpecial } from './picto.js';
-import { CLIPS } from './visuals/clips.js';
 import { SCENES } from './visuals/scenes.js';
 import { XS } from './visuals/map.js';
 
@@ -30,22 +28,16 @@ function register(it) {
 // Build the raw visual for a ref string.
 export function buildVisual(ref, opts = {}) {
   const [kind, rest] = [ref.slice(0, 1), ref.slice(2)];
-  if (kind === 'c' && CLIPS[rest]) { const v = createFigureView(CLIPS[rest], opts); return { svg: v.svg, render: v.render, dur: v.C.dur, ar: 'fig' }; }
   if (kind === 's' && SCENES[rest]) { const v = createSceneView(SCENES[rest], opts); return { svg: v.svg, render: v.render, dur: sceneDur(SCENES[rest]), ar: 'scene' }; }
   if (kind === 'x' && XS[rest]) { const v = createSpecial(XS[rest], opts); return { svg: v.svg, render: v.render, dur: v.dur || 4000, ar: 'picto' }; }
-  if (kind === 'p') {
-    const [ic, title, sub] = rest.split('|');
-    const flow = ic.includes('>');
-    const v = createPicto({ icons: ic.split(/[>+]/), title, sub, flow }, opts);
-    return { svg: v.svg, render: () => {}, dur: 2600, ar: 'picto', still: true };
-  }
-  const v = createPicto({ icon: 'ball', title: 'Visual coming soon' }, opts);
-  return { svg: v.svg, render: () => {}, dur: 2000, ar: 'picto', still: true };
+  return null; // player-figure animations and pictograms were removed: only real diagrams are shown
 }
+
+export const isDiagram = ref => !!ref && (ref.startsWith('s:') || ref.startsWith('x:'));
 
 // A self-animating visual element.
 export function visual(ref, { mode, label, cls = '' } = {}) {
-  const v = buildVisual(ref, { mode });
+  const v = ref && buildVisual(ref, { mode }); if (!v) return null;
   const el = h('div', { class: `vis ${v.ar} ${cls} ${mode || ''}`, role: 'img', 'aria-label': label || 'Animated illustration', tabindex: 0 });
   el.append(v.svg);
   const it = { el, render: v.render, time: 0, paused: reduced, visible: false };
@@ -87,7 +79,7 @@ export function watchPlayer(refs, captions, { title = 'Watch it' } = {}) {
   function syncBtn() { ppBtn.innerHTML = playing ? '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>' : '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>'; ppBtn.setAttribute('aria-label', playing ? 'Pause' : 'Play'); if (cur) cur.paused = !playing; }
   function go(k) {
     i = k; t = 0;
-    const v = buildVisual(refs[i]);
+    const v = buildVisual(refs[i]) || buildVisual('x:scoreclock');
     curDur = Math.max(2600, Math.min(9000, v.still ? 3000 : (v.dur || 3000) * 1.0));
     const box = h('div', { class: `vis ${v.ar}` }, v.svg);
     stage.replaceChildren(box);

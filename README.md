@@ -18,13 +18,9 @@ Check it at `https://<your-site>/api/health`: it should show `{"ok":true,"db":tr
 Without the database the app falls back to device-only accounts and says so on the sign-in screen.
 Accounts made on a device before cloud setup are moved to the cloud (with their data) the first time you sign in.
 
-## Visuals
-Every lesson step, common mistake (wrong vs right), drill step, glossary term and player skill has an animated illustration:
-- `js/figure.js`: animated player figure (IK poses, ball flight, rim, on-body labels such as joint angles).
-- `js/scene.js`: top-down court animations for reads, spacing, systems and terms.
-- `js/picto.js`: pictograms and infographics (timeline, shot clock, scoreboard, pace bar).
-- Content mapping lives in `js/visuals/map.js`; clips in `js/visuals/clips.js`; court scenes in `js/visuals/scenes.js`.
-Each lesson also has a "Watch it" player that plays all steps in order. These are illustrations, not real footage.
+## Visuals and video
+- Body technique (shooting, handling, finishing, footwork, defense) is taught with hand-picked YouTube coaching videos, mostly official Jr. NBA/NBA coaching and established trainers (`js/content/videos.js`). Videos are embedded, not copied, and need internet.
+- Court concepts (plays, spacing, reads, coverages, rotations, systems, terms) use animated top-down court diagrams (`js/scene.js`, `js/visuals/scenes.js`, mapped in `js/visuals/map.js`).
 
 ## Honest limitations
 - Camera + MediaPipe pose analysis is NOT tested on a real device. Pose rules were tested on synthetic landmarks only. First analysis needs internet to fetch the MediaPipe runtime/model (then cached).

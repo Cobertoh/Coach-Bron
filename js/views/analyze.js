@@ -5,9 +5,8 @@ import { analyze } from '../pose.js';
 import { loadPose, extractFrames, pickMime } from '../poseRuntime.js';
 import { back, empty, ctx } from '../ui.js';
 import { onLeave } from '../ctx.js';
-import { visual } from '../visual.js';
-
-const DEMO = { shooting: 'c:shot', dribbling: 'c:crossLow', finishing: 'c:layup', footwork: 'c:pivot', defense: 'c:slide', passing: 'c:pass' };
+import { videoCard } from '../video.js';
+import { TECH_VIDEO, videoById } from '../content/videos.js';
 // Top-down setup diagram: phone, field of view, player and the direction they face or move.
 const FACE = { shooting: 'side', finishing: 'side', passing: 'side', dribbling: 'front', footwork: 'front', defense: 'slide' };
 function camDiagram(tech, distText) {
@@ -63,7 +62,7 @@ export async function session(tech, query) {
     draw(h('div', {}, back(from && L[from] ? L[from].title : 'Analyze', from && L[from] ? `#/lesson/${from}` : '#/analyze'),
       h('h1', {}, `Analyze: ${T.title}`), h('div', { class: 'muted small', style: { margin: '4px 0 12px' } }, 'Step 1 of 3: set up your phone'),
       h('div', { class: 'vis picto' }, camDiagram(tech, sup.dist)),
-      h('div', { class: 'card' }, h('h4', {}, 'Camera angle'), h('p', { style: { margin: '4px 0 10px' } }, sup.angle), h('h4', {}, 'Distance'), h('p', { style: { margin: '4px 0 10px' } }, sup.dist), h('h4', {}, 'What to record'), h('p', { style: { margin: '4px 0 10px' } }, sup.tip), DEMO[tech] ? visual(DEMO[tech], { label: 'Example of the movement to record' }) : null),
+      h('div', { class: 'card' }, h('h4', {}, 'Camera angle'), h('p', { style: { margin: '4px 0 10px' } }, sup.angle), h('h4', {}, 'Distance'), h('p', { style: { margin: '4px 0 10px' } }, sup.dist), h('h4', {}, 'What to record'), h('p', { style: { margin: '4px 0 10px' } }, sup.tip), TECH_VIDEO[tech] && videoById(TECH_VIDEO[tech]) ? videoCard(videoById(TECH_VIDEO[tech])) : null),
       h('div', { class: 'card' }, ...COMMON.flatMap(([a, b]) => [h('h4', {}, a), h('p', { class: 'small', style: { margin: '2px 0 10px' } }, b)])),
       h('button', { class: 'btn pri block', onclick: openCam }, icon('camera'), 'Open camera'),
       h('label', { class: 'btn block', style: { marginTop: '8px' } }, 'Choose or record a video file', h('input', { type: 'file', accept: 'video/*', style: { display: 'none' }, onchange: e => e.target.files[0] && process(e.target.files[0]) })),

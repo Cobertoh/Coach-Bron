@@ -1,5 +1,5 @@
 // Offline shell + runtime cache for the pose-estimation runtime and model (downloaded once, then cached).
-const VERSION = 'cb-v4';
+const VERSION = 'cb-v5';
 const SHELL = ['./', 'index.html', 'css/app.css', 'manifest.webmanifest', 'icons/icon.svg'];
 const RUNTIME_HOSTS = ['cdn.jsdelivr.net', 'storage.googleapis.com'];
 
