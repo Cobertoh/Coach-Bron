@@ -41,13 +41,17 @@ export function signin() {
   show(shell('Welcome back', 'Sign in to continue',
     h('form', { onsubmit: async ev => {
       ev.preventDefault(); e.style.display = 'none'; btn.disabled = true;
-      try { const r = await auth.login(u.value.trim(), p.value); await enter(r.username); location.hash = '#/home'; ctx.rerender(); }
+      try { const r = await auth.login(u.value.trim(), p.value); await enter(r.username); const go = () => { location.hash = '#/home'; ctx.rerender(); }; if (r.recoveryCode) { toast('Your account now works on every device', 3500); showRecovery(r.recoveryCode, go); } else go(); }
       catch (x) { err(e, x); } finally { btn.disabled = false; }
     } },
     h('div', { class: 'field' }, h('label', {}, 'Username'), u), h('div', { class: 'field' }, h('label', {}, 'Password'), p), e, btn),
     h('button', { class: 'btn ghost block', style: { marginTop: '10px' }, onclick: () => recover() }, 'Forgot password? Use my recovery code'),
     h('button', { class: 'btn ghost block', onclick: () => signup() }, 'Create an account'), storageNote));
-  auth.accountCount().then(n => { storageNote.textContent = n ? `${n} account${n > 1 ? 's' : ''} saved in this browser.` : 'No accounts are saved in this browser yet. If you created one in Safari, open Coach Bron in Safari to sign in, or create a new account here. Safari and the Home Screen app keep separate storage on iPhone.'; }).catch(() => {});
+  auth.mode().then(async m => {
+    if (m === 'cloud') { storageNote.textContent = 'Your account works on any device: sign in with the same username and password. Accounts made earlier on this device move to the cloud when you sign in here.'; return; }
+    const n = await auth.accountCount();
+    storageNote.textContent = (n ? `${n} account${n > 1 ? 's' : ''} saved in this browser. ` : 'No accounts are saved in this browser yet. ') + 'Cloud accounts are not set up on this site, so accounts only work in the browser where they were made.';
+  }).catch(() => {});
 }
 
 export function signup() {

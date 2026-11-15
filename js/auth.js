@@ -1,6 +1,9 @@
-// Local account system. Passwords are never stored: PBKDF2-SHA256 (WebCrypto) with a per-user random salt.
-// Accounts exist only on this device. Recovery uses a one-time recovery code shown at sign-up (stored hashed).
+// Accounts. With the cloud API (Cloudflare D1) available, accounts live on the server and work on any device;
+// the user's data is cached in IndexedDB and synced (js/sync.js). Without it, the original device-only accounts are used.
+// Passwords are never stored: PBKDF2-SHA256 with a per-user salt. Recovery uses a one-time code (stored hashed).
 import { get, put, del, deleteUserData, countStore } from './db.js';
+import * as cloud from './cloud.js';
+import * as sync from './sync.js';
 
 const ITER = 210000;
 const TOKEN_KEY = 'cb_token';
@@ -57,7 +60,7 @@ function noteFail() {
 }
 const clearFail = () => localStorage.removeItem(FAIL_KEY);
 
-export async function register(username, password) {
+async function local_register(username, password) {
   let e = validateUsername(username) || validatePassword(password); if (e) throw new Error(e);
   const key = username.toLowerCase();
   if (await get('users', key)) throw new Error('That username is taken on this device.');
@@ -71,7 +74,7 @@ export async function register(username, password) {
 
 export async function accountCount() { return countStore('users'); }
 
-export async function login(username, password) {
+async function local_login(username, password) {
   checkLock();
   const u = await get('users', username.toLowerCase());
   // Always run a derivation so timing doesn't reveal whether the username exists.
@@ -83,7 +86,7 @@ export async function login(username, password) {
   return { username: u.username };
 }
 
-export async function resetWithRecovery(username, code, newPassword) {
+async function local_resetWithRecovery(username, code, newPassword) {
   checkLock();
   const e = validatePassword(newPassword); if (e) throw new Error(e);
   const u = await get('users', username.toLowerCase());
@@ -97,7 +100,7 @@ export async function resetWithRecovery(username, code, newPassword) {
   return { username: u.username, recoveryCode: newCode };
 }
 
-export async function changePassword(username, oldPw, newPw) {
+async function local_changePassword(username, oldPw, newPw) {
   const e = validatePassword(newPw); if (e) throw new Error(e);
   const u = await get('users', username);
   if (!eq(await derive(oldPw, unhex(u.salt), u.iter || ITER), unhex(u.hash))) throw new Error('Current password is wrong.');
@@ -105,20 +108,97 @@ export async function changePassword(username, oldPw, newPw) {
   await put('users', u);
 }
 
-export async function currentUser() {
+async function local_currentUser() {
   const token = localStorage.getItem(TOKEN_KEY); if (!token) return null;
   const s = await get('sessions', token);
   if (!s || s.exp < Date.now()) { localStorage.removeItem(TOKEN_KEY); if (s) await del('sessions', token); return null; }
   const u = await get('users', s.uid); if (!u) return null;
   return { username: u.username, display: u.display };
 }
-export async function logout() {
+async function local_logout() {
   const token = localStorage.getItem(TOKEN_KEY);
   if (token) await del('sessions', token);
   localStorage.removeItem(TOKEN_KEY);
 }
-export async function deleteAccount(username, password) {
+async function local_deleteAccount(username, password) {
   const u = await get('users', username);
   if (!eq(await derive(password, unhex(u.salt), u.iter || ITER), unhex(u.hash))) throw new Error('Password is wrong.');
   await deleteUserData(username); localStorage.removeItem(TOKEN_KEY);
+}
+
+// ---------- public API: cloud when available, device-only otherwise ----------
+export const mode = () => cloud.detect();
+const startSync = async (u, { all = false } = {}) => { sync.start(u); if (all) await sync.markAllDirty(); await Promise.race([sync.syncNow(), new Promise(r => setTimeout(r, 4000))]); };
+
+export async function register(username, password) {
+  if (await cloud.detect() !== 'cloud') return local_register(username, password);
+  const e = validateUsername(username) || validatePassword(password); if (e) throw new Error(e);
+  const r = await cloud.api('register', { method: 'POST', body: { username, password }, auth: false });
+  cloud.saveSession(r); await startSync(r.username);
+  return { username: r.username, recoveryCode: r.recoveryCode };
+}
+
+export async function login(username, password) {
+  if (await cloud.detect() !== 'cloud') return local_login(username, password);
+  try {
+    const r = await cloud.api('login', { method: 'POST', body: { username, password }, auth: false });
+    cloud.saveSession(r); await startSync(r.username);
+    return { username: r.username };
+  } catch (e) {
+    // An account that was made on this device before cloud accounts existed: move it to the cloud with its data.
+    if (e.code !== 'no_account') throw e;
+    const lu = await get('users', username.toLowerCase());
+    if (!lu || !eq(await derive(password, unhex(lu.salt), lu.iter || ITER), unhex(lu.hash))) throw new Error('Wrong username or password.');
+    let r;
+    try { r = await cloud.api('register', { method: 'POST', body: { username: lu.display || lu.username, password }, auth: false }); }
+    catch (x) { if (x.status === 409) throw new Error('That username is already used by another cloud account. Sign in with a new username, then restore a backup.'); throw x; }
+    cloud.saveSession(r); await startSync(r.username, { all: true });
+    await del('users', lu.username).catch(() => {});
+    return { username: r.username, recoveryCode: r.recoveryCode, migrated: true };
+  }
+}
+
+export async function resetWithRecovery(username, code, newPassword) {
+  if (await cloud.detect() !== 'cloud') return local_resetWithRecovery(username, code, newPassword);
+  const e = validatePassword(newPassword); if (e) throw new Error(e);
+  const r = await cloud.api('recover', { method: 'POST', body: { username, code, newPassword }, auth: false });
+  cloud.saveSession(r); await startSync(r.username);
+  return { username: r.username, recoveryCode: r.recoveryCode };
+}
+
+export async function changePassword(username, oldPw, newPw) {
+  if (cloud.currentMode() !== 'cloud' || !cloud.token()) return local_changePassword(username, oldPw, newPw);
+  const e = validatePassword(newPw); if (e) throw new Error(e);
+  await cloud.api('password', { method: 'POST', body: { oldPassword: oldPw, newPassword: newPw } });
+}
+
+// Works offline: the session is trusted locally and checked with the server in the background.
+export async function currentUser() {
+  const m = await cloud.detect();
+  if (cloud.token()) {
+    const u = cloud.cachedUser(); if (!u) { cloud.clearSession(); return null; }
+    sync.start(u.username);
+    if (m === 'cloud') cloud.api('me').catch(e => { if (e.status === 401) window.dispatchEvent(new Event('cb-signed-out')); });
+    return u;
+  }
+  if (m === 'cloud') return null; // old device-only session: signing in moves that account to the cloud
+  return local_currentUser();
+}
+export const initialSync = () => Promise.race([sync.syncNow(), new Promise(r => setTimeout(r, 3000))]);
+
+export async function logout() {
+  if (!cloud.token()) return local_logout();
+  const u = cloud.cachedUser();
+  let flushed = false;
+  try { await sync.push(); flushed = true; } catch { }
+  try { await cloud.api('logout', { method: 'POST' }); } catch { }
+  sync.stop(); cloud.clearSession();
+  // The cloud has the data now, so don't leave it on a possibly shared device. Unsent changes stay until next sign-in.
+  if (u && flushed) { await deleteUserData(u.username); sync.forget(u.username); }
+}
+
+export async function deleteAccount(username, password) {
+  if (!cloud.token()) return local_deleteAccount(username, password);
+  await cloud.api('delete', { method: 'POST', body: { password } });
+  sync.stop(); await deleteUserData(username); sync.forget(username); cloud.clearSession();
 }

@@ -1,5 +1,5 @@
 // Offline shell + runtime cache for the pose-estimation runtime and model (downloaded once, then cached).
-const VERSION = 'cb-v3';
+const VERSION = 'cb-v4';
 const SHELL = ['./', 'index.html', 'css/app.css', 'manifest.webmanifest', 'icons/icon.svg'];
 const RUNTIME_HOSTS = ['cdn.jsdelivr.net', 'storage.googleapis.com'];
 
@@ -15,6 +15,7 @@ self.addEventListener('fetch', e => {
   const url = new URL(req.url);
   const same = url.origin === location.origin;
   if (!same && !RUNTIME_HOSTS.includes(url.hostname)) return;
+  if (same && url.pathname.includes('/api/')) return; // account/sync calls always go to the network, never cached
   // Same-origin app files: network first (so updates arrive), fall back to cache offline.
   if (same) {
     e.respondWith(fetch(req).then(r => { const copy = r.clone(); caches.open(VERSION).then(c => c.put(req, copy)); return r; })

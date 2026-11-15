@@ -1,4 +1,5 @@
-// IndexedDB persistence. Everything lives on this device (local-first). No cloud sync exists.
+// IndexedDB persistence. Local cache of the user's data; js/sync.js mirrors 'records' to the cloud when accounts are online.
+export const hooks = { onPut: null, onDel: null };
 const DB_NAME = 'coachbron', VER = 1;
 let dbp;
 
@@ -26,9 +27,11 @@ const done = t => new Promise((res, rej) => {
 });
 const rq = r => new Promise((res, rej) => { r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
 
-export async function put(store, val) { const db = await open(); const t = db.transaction(store, 'readwrite'); t.objectStore(store).put(val); await done(t); return val; }
+export async function rawPut(store, val) { const db = await open(); const t = db.transaction(store, 'readwrite'); t.objectStore(store).put(val); await done(t); return val; }
+export async function put(store, val) { await rawPut(store, val); if (store === 'records') hooks.onPut?.(val.id); return val; }
 export async function get(store, key) { const db = await open(); return rq(db.transaction(store).objectStore(store).get(key)); }
-export async function del(store, key) { const db = await open(); const t = db.transaction(store, 'readwrite'); t.objectStore(store).delete(key); await done(t); }
+export async function rawDel(store, key) { const db = await open(); const t = db.transaction(store, 'readwrite'); t.objectStore(store).delete(key); await done(t); }
+export async function del(store, key) { await rawDel(store, key); if (store === 'records') hooks.onDel?.(key); }
 export async function listRecords(uid, type) {
   const db = await open();
   return rq(db.transaction('records').objectStore('records').index('uid_type').getAll(IDBKeyRange.only([uid, type])));

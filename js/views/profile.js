@@ -4,6 +4,8 @@ import * as auth from '../auth.js';
 import { L, PY } from '../content/index.js';
 import { back, prefsForm, lessonRow, ctx } from '../ui.js';
 import { welcome } from './auth.js';
+import * as cloud from '../cloud.js';
+import * as sync from '../sync.js';
 
 export async function render() {
   const [prefs, sl, fp, ss, an, prog] = await Promise.all([P.get(), saved.lessons(), saved.plays(), sessions.list(), analyses.list(), progress.get()]);
@@ -22,7 +24,15 @@ export async function render() {
   el.append(sec('Analysis history'), ...(an.length ? an.slice(0, 5).map(a => h('a', { class: 'card link', href: `#/analyze/result/${a.id}` }, h('h3', {}, a.techniqueTitle), h('div', { class: 'small muted' }, `${fmtDate(a.at)} · confidence ${a.confidence.label}`))) : [h('div', { class: 'small muted' }, 'No analyses yet.')]));
 
   // Account & privacy
-  el.append(sec('Privacy and data'), h('div', { class: 'card' }, h('p', { class: 'small' }, 'Everything is stored on this device only. Coach Bron has no server, no sync and no tracking, and your video is processed on the phone and not saved or uploaded. Use backup to move your data to another device.'),
+  const isCloud = !!cloud.token();
+  const syncLine = h('p', { class: 'small muted', style: { margin: '6px 0 10px' } });
+  const showSync = () => { const s = sync.status; syncLine.textContent = s.error ? `Not synced: ${s.error} Changes are kept on this device and will upload automatically.` : s.lastOk ? `Synced ${new Date(s.lastOk).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}${s.pending ? ` · ${s.pending} change${s.pending > 1 ? 's' : ''} waiting` : ''}` : 'Syncing…'; };
+  if (isCloud) { showSync(); const off = sync.onStatus(showSync); setTimeout(() => { if (!syncLine.isConnected) off(); }, 600000); }
+  el.append(sec('Privacy and data'), h('div', { class: 'card' }, h('p', { class: 'small' }, isCloud
+      ? 'Your account and data (preferences, progress, saved items, workouts, tests and analysis results) are stored on Coach Bron\'s server so you can sign in on any device. Passwords are stored only as salted hashes. Videos are processed on the phone and never uploaded. No tracking or ads.'
+      : 'Everything is stored on this device only, because cloud accounts are not set up on this site. Your video is processed on the phone and not saved or uploaded. Use backup to move your data to another device.'),
+    isCloud ? syncLine : null,
+    isCloud ? h('button', { class: 'btn block', style: { marginBottom: '8px' }, onclick: async () => { syncLine.textContent = 'Syncing…'; await sync.syncNow(); showSync(); toast(sync.status.error ? 'Sync failed' : 'Synced'); } }, 'Sync now') : null,
     h('button', { class: 'btn block', onclick: async () => {
       const blob = new Blob([JSON.stringify(await exportAll())], { type: 'application/json' }); const a = h('a', { href: URL.createObjectURL(blob), download: `coach-bron-${ctx.user.username}.json` }); document.body.append(a); a.click(); a.remove(); toast('Backup downloaded');
     } }, 'Download a backup'),
@@ -45,6 +55,6 @@ function changePw() {
 }
 function del() {
   const p = h('input', { type: 'password', placeholder: 'Enter your password to confirm' }); const err = h('div', { class: 'bad small', style: { margin: '8px 0' } });
-  const sh = sheet([h('h2', {}, 'Delete account?'), h('p', { class: 'muted small', style: { margin: '8px 0 12px' } }, 'This permanently deletes your account, workouts, analyses and saved items from this device. It cannot be undone.'), p, err,
+  const sh = sheet([h('h2', {}, 'Delete account?'), h('p', { class: 'muted small', style: { margin: '8px 0 12px' } }, (cloud.token() ? 'This permanently deletes your account and all its data from the server and this device.' : 'This permanently deletes your account, workouts, analyses and saved items from this device.') + ' It cannot be undone.'), p, err,
     h('button', { class: 'btn danger block', onclick: async () => { try { await auth.deleteAccount(user(), p.value); sh.close(); ctx.user = null; ctx.hideNav = true; welcome(); } catch (e) { err.textContent = e.message; } } }, 'Delete everything')]);
 }

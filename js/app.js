@@ -97,11 +97,17 @@ async function boot() {
   ctx.user = await auth.currentUser();
   if (!ctx.user) { authV.welcome(); return; }
   setUser(ctx.user.username);
+  await auth.initialSync();
   const { prefs } = await import('./store.js');
   const p = await prefs.get();
   if (!p.onboardingDone && !p.onboardingSkipped && !sessionStorage.getItem('cb_ob')) { sessionStorage.setItem('cb_ob', '1'); authV.onboarding(false); return; }
   if (!location.hash) location.hash = '#/home';
   route();
 }
+// The server rejected our session (password changed elsewhere, expired, or account deleted).
+window.addEventListener('cb-signed-out', async () => {
+  const { clearSession } = await import('./cloud.js'); const sync = await import('./sync.js');
+  sync.stop(); clearSession(); ctx.user = null; ctx.hideNav = true; authV.welcome();
+});
 // After sign-in the auth views call ctx.rerender(), which fires hashchange -> route().
 boot();
