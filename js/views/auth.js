@@ -34,6 +34,7 @@ async function enter(username) {
 
 export function signin() {
   ctx.hideNav = true;
+  const storageNote = h('p', { class: 'tiny muted', style: { marginTop: '14px' } });
   const u = h('input', { type: 'text', autocomplete: 'username', autocapitalize: 'none', autocorrect: 'off', placeholder: 'Username' });
   const p = h('input', { type: 'password', autocomplete: 'current-password', placeholder: 'Password' });
   const e = errBox(); const btn = h('button', { class: 'btn pri block', type: 'submit' }, 'Sign in');
@@ -45,7 +46,8 @@ export function signin() {
     } },
     h('div', { class: 'field' }, h('label', {}, 'Username'), u), h('div', { class: 'field' }, h('label', {}, 'Password'), p), e, btn),
     h('button', { class: 'btn ghost block', style: { marginTop: '10px' }, onclick: () => recover() }, 'Forgot password? Use my recovery code'),
-    h('button', { class: 'btn ghost block', onclick: () => signup() }, 'Create an account')));
+    h('button', { class: 'btn ghost block', onclick: () => signup() }, 'Create an account'), storageNote));
+  auth.accountCount().then(n => { storageNote.textContent = n ? `${n} account${n > 1 ? 's' : ''} saved in this browser.` : 'No accounts are saved in this browser yet. If you created one in Safari, open Coach Bron in Safari to sign in, or create a new account here. Safari and the Home Screen app keep separate storage on iPhone.'; }).catch(() => {});
 }
 
 export function signup() {

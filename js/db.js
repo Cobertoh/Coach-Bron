@@ -51,4 +51,5 @@ export async function deleteUserData(uid) {
   t.objectStore('users').delete(uid);
   await done(t);
 }
+export async function countStore(store) { const db = await open(); return rq(db.transaction(store).objectStore(store).count()); }
 export async function dbReady() { await open(); return true; }

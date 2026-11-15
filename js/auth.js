@@ -1,6 +1,6 @@
 // Local account system. Passwords are never stored: PBKDF2-SHA256 (WebCrypto) with a per-user random salt.
 // Accounts exist only on this device. Recovery uses a one-time recovery code shown at sign-up (stored hashed).
-import { get, put, del, deleteUserData } from './db.js';
+import { get, put, del, deleteUserData, countStore } from './db.js';
 
 const ITER = 210000;
 const TOKEN_KEY = 'cb_token';
@@ -38,6 +38,7 @@ export function validatePassword(p) {
 }
 
 async function startSession(username) {
+  try { navigator.storage?.persist?.(); } catch { } // ask the browser not to evict account data
   const token = hex(rand(32));
   await put('sessions', { token, uid: username, exp: Date.now() + SESSION_DAYS * 864e5 });
   localStorage.setItem(TOKEN_KEY, token);
@@ -68,12 +69,16 @@ export async function register(username, password) {
   return { username: key, recoveryCode: code };
 }
 
+export async function accountCount() { return countStore('users'); }
+
 export async function login(username, password) {
   checkLock();
   const u = await get('users', username.toLowerCase());
   // Always run a derivation so timing doesn't reveal whether the username exists.
   const hash = await derive(password, u ? unhex(u.salt) : rand(16), u?.iter || ITER);
-  if (!u || !eq(hash, unhex(u.hash))) { noteFail(); throw new Error('Wrong username or password.'); }
+  // Accounts live only in this browser's storage, so saying "no such account here" leaks nothing new and explains the most common problem.
+  if (!u) { noteFail(); throw new Error(`There is no account named "${username}" saved in this browser. Accounts are stored on the device, and Safari and the Home Screen app keep separate storage.`); }
+  if (!eq(hash, unhex(u.hash))) { noteFail(); throw new Error('Wrong password for this account.'); }
   clearFail(); await startSession(u.username);
   return { username: u.username };
 }
